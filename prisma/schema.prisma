@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                    String     @id @default(cuid())
+  name                  String?
+  email                 String?    @unique
+  password              String?
+  image                 String?
+  role                  String     @default("USER")
+  emailVerified         DateTime?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  aiAnnouncementsEmails Boolean    @default(false)
+  productUpdatesEmails  Boolean    @default(true)
+  studyTipsEmails       Boolean    @default(true)
+  weeklySummaryEmails   Boolean    @default(true)
+  accounts              Account[]
+  emailLogs             EmailLog[]
+  sessions              Session[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model EmailLog {
+  id             String   @id @default(cuid())
+  category       String
+  subject        String
+  recipientCount Int
+  status         String
+  createdAt      DateTime @default(now())
+  body           String
+  recipientType  String
+  sentById       String
+  sentBy         User     @relation(fields: [sentById], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([category])
+  @@index([status])
+}
