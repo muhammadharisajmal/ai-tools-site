@@ -50,7 +50,7 @@ function SignInFormContent() {
       setIsUnverified(true);
     }
     if (callbackError === "EMAIL_NOT_VERIFIED" || callbackError === "AccessDenied") {
-      setErrorMessage("Your email has not been verified. Please check your inbox or click resend.");
+      setErrorMessage("Your email has not been verified. Please check your inbox.");
       setIsUnverified(true);
     }
   }, [isJustRegistered, callbackError, registeredEmail, email]);
@@ -100,10 +100,10 @@ function SignInFormContent() {
         if (errStr.includes("USER_NOT_FOUND")) {
           setErrorMessage("This email is not registered. Please sign up first.");
         } else if (errStr.includes("EMAIL_NOT_VERIFIED")) {
-          setErrorMessage("Your email has not been verified. Please check your inbox or click resend.");
+          setErrorMessage("Your email has not been verified. Please check your inbox.");
           setIsUnverified(true);
         } else if (errStr.includes("INVALID_CREDENTIALS") || errStr.includes("CredentialsSignin")) {
-          setErrorMessage("Incorrect password or unverified email. Please verify your credentials.");
+          setErrorMessage("Incorrect password. Please try again.");
         } else {
           setErrorMessage("Invalid email or password.");
         }
@@ -130,7 +130,7 @@ function SignInFormContent() {
       if (msg.includes("USER_NOT_FOUND")) {
         setErrorMessage("This email is not registered. Please sign up first.");
       } else if (msg.includes("EMAIL_NOT_VERIFIED")) {
-        setErrorMessage("Your email has not been verified. Please check your inbox or click resend.");
+        setErrorMessage("Your email has not been verified. Please check your inbox.");
         setIsUnverified(true);
       } else if (msg.includes("INVALID_CREDENTIALS")) {
         setErrorMessage("Incorrect password. Please try again.");
