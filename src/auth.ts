@@ -63,17 +63,80 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     ...authConfig.callbacks,
+    async signIn({ user, account }) {
+      if (!user?.email) return false;
+      const normalizedEmail = user.email.trim().toLowerCase();
+      
+      let dbUser = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      });
+
+      // CASE 1: First-time Google Sign-Up
+      if (!dbUser) {
+        if (account?.provider === "google") {
+          dbUser = await prisma.user.create({
+            data: {
+              name: user.name,
+              email: normalizedEmail,
+              image: user.image,
+              emailVerified: null, // Explicitly unverified
+              role: "USER",
+            },
+          });
+          if (account) {
+            await prisma.account.create({
+              data: {
+                userId: dbUser.id,
+                type: account.type,
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+                refresh_token: account.refresh_token,
+                access_token: account.access_token,
+                expires_at: account.expires_at,
+                token_type: account.token_type,
+                scope: account.scope,
+                id_token: account.id_token,
+                session_state: account.session_state as string | null,
+              },
+            });
+          }
+          try {
+            await sendVerificationEmail(normalizedEmail, user.name ?? undefined);
+          } catch (err) {
+            console.error("Failed to send verification email on Google signup:", err);
+          }
+          // Redirect to login showing the success/registered state
+          return `/login?registered=true&email=${encodeURIComponent(normalizedEmail)}`;
+        }
+        return false;
+      }
+
+      // CASE 2: Existing User trying to sign in via Google while unverified
+      if (!dbUser.emailVerified) {
+        if (account?.provider === "google") {
+          try {
+            await sendVerificationEmail(normalizedEmail, dbUser.name ?? undefined);
+          } catch (err) {
+            console.error("Failed to resend verification email:", err);
+          }
+        }
+        return "/login?error=EMAIL_NOT_VERIFIED";
+      }
+
+      return true;
+    },
     async jwt({ token, user }) {
       const email = token.email || user?.email;
       if (email) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { email: email.trim().toLowerCase() },
-            select: { id: true, role: true },
+            select: { id: true, role: true, emailVerified: true },
           });
           if (dbUser) {
             token.id = dbUser.id;
             token.role = dbUser.role || "USER";
+            token.emailVerified = dbUser.emailVerified;
           }
         } catch (err) {
           console.error("JWT DB Lookup Error:", err);
@@ -85,6 +148,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user && token) {
         session.user.id = token.id as string;
         session.user.role = (token.role as string) || "USER";
+        session.user.emailVerified = token.emailVerified as Date | null;
       }
       return session;
     },
