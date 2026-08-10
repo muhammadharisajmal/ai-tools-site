@@ -1,9 +1,7 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
 import { sendVerificationEmail } from "@/lib/send-verification-email";
 import { authConfig } from "./auth.config";
 
@@ -15,53 +13,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId: process.env.AUTH_GOOGLE_ID!,
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,
       allowDangerousEmailAccountLinking: true,
-    }),
-    Credentials({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
-
-        const email = (credentials.email as string).trim().toLowerCase();
-        const password = credentials.password as string;
-
-        // Case-insensitive query handles both capitalized and lowercase DB records
-        const user = await prisma.user.findFirst({
-          where: {
-            email: {
-              equals: email,
-              mode: "insensitive",
-            },
-          },
-        });
-
-        if (!user || !user.password) {
-          return null;
-        }
-
-        const passwordMatch = await bcrypt.compare(password, user.password);
-        if (!passwordMatch) {
-          return null;
-        }
-
-        if (!user.emailVerified) {
-          throw new Error("EMAIL_NOT_VERIFIED");
-        }
-
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          role: user.role || "USER",
-          emailVerified: user.emailVerified,
-        };
-      },
     }),
   ],
   session: {
@@ -81,12 +32,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return `${baseUrl}/dashboard`;
     },
     async signIn({ user, account }) {
-      // 1. Credentials provider bypass: authorize() already validated password & email verification
-      if (account?.provider === "credentials") {
-        return true;
-      }
-
-      // 2. Google OAuth logic (kept completely safe and untouched)
       if (!user?.email) return false;
       const normalizedEmail = user.email.trim().toLowerCase();
       
@@ -99,73 +44,43 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       });
 
+      // CASE 1: Brand New User Signup via Google
       if (!dbUser) {
-        if (account?.provider === "google") {
-          dbUser = await prisma.user.create({
+        dbUser = await prisma.user.create({
+          data: {
+            name: user.name,
+            email: normalizedEmail,
+            image: user.image,
+            emailVerified: new Date(), // Automatically verify Google sign-ins since Google verifies emails
+            role: "USER",
+          },
+        });
+        if (account) {
+          await prisma.account.create({
             data: {
-              name: user.name,
-              email: normalizedEmail,
-              image: user.image,
-              emailVerified: null,
-              role: "USER",
+              userId: dbUser.id,
+              type: account.type,
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+              refresh_token: account.refresh_token,
+              access_token: account.access_token,
+              expires_at: account.expires_at,
+              token_type: account.token_type,
+              scope: account.scope,
+              id_token: account.id_token,
+              session_state: account.session_state as string | null,
             },
           });
-          if (account) {
-            await prisma.account.create({
-              data: {
-                userId: dbUser.id,
-                type: account.type,
-                provider: account.provider,
-                providerAccountId: account.providerAccountId,
-                refresh_token: account.refresh_token,
-                access_token: account.access_token,
-                expires_at: account.expires_at,
-                token_type: account.token_type,
-                scope: account.scope,
-                id_token: account.id_token,
-                session_state: account.session_state as string | null,
-              },
-            });
-          }
-          try {
-            await sendVerificationEmail(normalizedEmail, user.name ?? undefined);
-          } catch (err) {
-            console.error("Failed to send verification email on Google signup:", err);
-          }
-          return `/login?registered=true&email=${encodeURIComponent(normalizedEmail)}`;
         }
-        return false;
+        return true;
       }
 
+      // If user exists but emailVerified was null previously, update it on Google sign-in
       if (!dbUser.emailVerified) {
-        if (account?.provider === "google") {
-          const existingAccount = await prisma.account.findFirst({
-            where: { userId: dbUser.id, provider: account.provider },
-          });
-          if (!existingAccount && account) {
-            await prisma.account.create({
-              data: {
-                userId: dbUser.id,
-                type: account.type,
-                provider: account.provider,
-                providerAccountId: account.providerAccountId,
-                refresh_token: account.refresh_token,
-                access_token: account.access_token,
-                expires_at: account.expires_at,
-                token_type: account.token_type,
-                scope: account.scope,
-                id_token: account.id_token,
-                session_state: account.session_state as string | null,
-              },
-            });
-          }
-          try {
-            await sendVerificationEmail(normalizedEmail, dbUser.name ?? undefined);
-          } catch (err) {
-            console.error("Failed to resend verification email:", err);
-          }
-        }
-        return `/login?error=EMAIL_NOT_VERIFIED&email=${encodeURIComponent(normalizedEmail)}`;
+        await prisma.user.update({
+          where: { id: dbUser.id },
+          data: { emailVerified: new Date() },
+        });
       }
 
       return true;
