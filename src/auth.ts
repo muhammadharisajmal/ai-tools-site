@@ -75,11 +75,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return `${baseUrl}/dashboard`;
     },
     async signIn({ user, account }) {
-      // If this is a credentials login, bypass Google check and rely solely on authorize()
+      // Allow credentials provider to pass through successfully if authorized
       if (account?.provider === "credentials") {
         return true;
       }
 
+      // Google Sign-in logic (kept safe and untouched)
       if (!user?.email) return false;
       const normalizedEmail = user.email.trim().toLowerCase();
       
@@ -87,7 +88,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         where: { email: normalizedEmail },
       });
 
-      // CASE 1: Brand New User Signup via Google
       if (!dbUser) {
         if (account?.provider === "google") {
           dbUser = await prisma.user.create({
@@ -126,7 +126,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return false;
       }
 
-      // CASE 2: User exists but is NOT yet verified
       if (!dbUser.emailVerified) {
         if (account?.provider === "google") {
           const existingAccount = await prisma.account.findFirst({
@@ -158,7 +157,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return `/login?error=EMAIL_NOT_VERIFIED&email=${encodeURIComponent(normalizedEmail)}`;
       }
 
-      // CASE 3: User IS verified -> allow sign in
       return true;
     },
     async jwt({ token, user }) {
