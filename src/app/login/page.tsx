@@ -48,7 +48,7 @@ function SignInFormContent() {
       setIsUnverified(true);
     }
     if (callbackError === "EMAIL_NOT_VERIFIED") {
-      setErrorMessage("Your email has not been verified. Please verify your email first.");
+      setErrorMessage("Your email has not been verified. Please check your inbox or click resend.");
       setIsUnverified(true);
     }
   }, [isJustRegistered, callbackError]);
@@ -94,13 +94,14 @@ function SignInFormContent() {
       });
 
       if (res?.error) {
-        // Parse custom error codes returned from NextAuth authorize
-        if (res.code === "user_not_found") {
+        // NextAuth returns the exact error string thrown in authorize() inside res.error
+        const errCode = res.error;
+        if (errCode === "USER_NOT_FOUND") {
           setErrorMessage("This email is not registered. Please sign up first.");
-        } else if (res.code === "email_not_verified") {
-          setErrorMessage("Your email has not been verified. Please check your inbox or resend verification.");
+        } else if (errCode === "EMAIL_NOT_VERIFIED") {
+          setErrorMessage("Your email has not been verified. Please check your inbox or click resend.");
           setIsUnverified(true);
-        } else if (res.code === "invalid_credentials") {
+        } else if (errCode === "INVALID_CREDENTIALS") {
           setErrorMessage("Incorrect password. Please try again.");
         } else {
           setErrorMessage("Invalid email or password.");

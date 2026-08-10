@@ -124,7 +124,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // CASE 2: User exists but is NOT yet verified
       if (!dbUser.emailVerified) {
         if (account?.provider === "google") {
-          // Ensure account is linked
           const existingAccount = await prisma.account.findFirst({
             where: { userId: dbUser.id, provider: account.provider },
           });
@@ -151,10 +150,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             console.error("Failed to resend verification email:", err);
           }
         }
-        return "/login?error=EMAIL_NOT_VERIFIED";
+        return `/login?error=EMAIL_NOT_VERIFIED&email=${encodeURIComponent(normalizedEmail)}`;
       }
 
-      // CASE 3: User IS verified -> allow sign in and redirect to dashboard
+      // CASE 3: User IS verified -> allow sign in
       return true;
     },
     async jwt({ token, user }) {
