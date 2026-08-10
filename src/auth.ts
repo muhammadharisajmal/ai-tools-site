@@ -71,7 +71,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         where: { email: normalizedEmail },
       });
 
-      // CASE 1: First-time Google Sign-Up
+      // CASE 1: Brand New User Signup via Google
       if (!dbUser) {
         if (account?.provider === "google") {
           dbUser = await prisma.user.create({
@@ -79,7 +79,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               name: user.name,
               email: normalizedEmail,
               image: user.image,
-              emailVerified: null, // Explicitly unverified
+              emailVerified: null, // Explicitly unverified initially
               role: "USER",
             },
           });
@@ -105,15 +105,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           } catch (err) {
             console.error("Failed to send verification email on Google signup:", err);
           }
-          // Redirect to login showing the success/registered state
           return `/login?registered=true&email=${encodeURIComponent(normalizedEmail)}`;
         }
         return false;
       }
 
-      // CASE 2: Existing User trying to sign in via Google while unverified
+      // CASE 2: User exists but is NOT yet verified
       if (!dbUser.emailVerified) {
         if (account?.provider === "google") {
+          // Ensure account is linked
+          const existingAccount = await prisma.account.findFirst({
+            where: { userId: dbUser.id, provider: account.provider },
+          });
+          if (!existingAccount && account) {
+            await prisma.account.create({
+              data: {
+                userId: dbUser.id,
+                type: account.type,
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+                refresh_token: account.refresh_token,
+                access_token: account.access_token,
+                expires_at: account.expires_at,
+                token_type: account.token_type,
+                scope: account.scope,
+                id_token: account.id_token,
+                session_state: account.session_state as string | null,
+              },
+            });
+          }
           try {
             await sendVerificationEmail(normalizedEmail, dbUser.name ?? undefined);
           } catch (err) {
@@ -123,6 +143,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return "/login?error=EMAIL_NOT_VERIFIED";
       }
 
+      // CASE 3: User IS verified -> allow sign in and redirect to dashboard
       return true;
     },
     async jwt({ token, user }) {
