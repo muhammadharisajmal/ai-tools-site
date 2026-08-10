@@ -30,7 +30,6 @@ function SignInFormContent() {
 
   const [email, setEmail] = useState(registeredEmail || "");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -41,17 +40,20 @@ function SignInFormContent() {
   const [isUnverified, setIsUnverified] = useState(false);
 
   useEffect(() => {
+    if (registeredEmail && !email) {
+      setEmail(registeredEmail);
+    }
     if (isJustRegistered) {
-      toast.success("Account created! A verification email has been sent.", {
+      toast.success("Account created successfully! A verification email has been sent.", {
         duration: 6000,
       });
       setIsUnverified(true);
     }
-    if (callbackError === "EMAIL_NOT_VERIFIED") {
+    if (callbackError === "EMAIL_NOT_VERIFIED" || callbackError === "AccessDenied") {
       setErrorMessage("Your email has not been verified. Please check your inbox or click resend.");
       setIsUnverified(true);
     }
-  }, [isJustRegistered, callbackError]);
+  }, [isJustRegistered, callbackError, registeredEmail, email]);
 
   const validateEmail = (val: string): boolean => {
     if (!val.trim()) {
@@ -94,14 +96,13 @@ function SignInFormContent() {
       });
 
       if (res?.error) {
-        // NextAuth returns the exact error string thrown in authorize() inside res.error
-        const errCode = res.error;
-        if (errCode === "USER_NOT_FOUND") {
+        const errStr = res.error;
+        if (errStr.includes("USER_NOT_FOUND")) {
           setErrorMessage("This email is not registered. Please sign up first.");
-        } else if (errCode === "EMAIL_NOT_VERIFIED") {
+        } else if (errStr.includes("EMAIL_NOT_VERIFIED")) {
           setErrorMessage("Your email has not been verified. Please check your inbox or click resend.");
           setIsUnverified(true);
-        } else if (errCode === "INVALID_CREDENTIALS") {
+        } else if (errStr.includes("INVALID_CREDENTIALS")) {
           setErrorMessage("Incorrect password. Please try again.");
         } else {
           setErrorMessage("Invalid email or password.");
@@ -124,8 +125,19 @@ function SignInFormContent() {
         }
       }
       window.location.href = targetUrl;
-    } catch {
-      setErrorMessage("An unexpected error occurred. Please try again later.");
+    } catch (err: any) {
+      // Safely catch standard NextAuth error throws or network failures
+      const msg = err?.message || "";
+      if (msg.includes("USER_NOT_FOUND")) {
+        setErrorMessage("This email is not registered. Please sign up first.");
+      } else if (msg.includes("EMAIL_NOT_VERIFIED")) {
+        setErrorMessage("Your email has not been verified. Please check your inbox or click resend.");
+        setIsUnverified(true);
+      } else if (msg.includes("INVALID_CREDENTIALS")) {
+        setErrorMessage("Incorrect password. Please try again.");
+      } else {
+        setErrorMessage("Invalid email or password.");
+      }
       setIsSubmitting(false);
     }
   };
@@ -253,6 +265,7 @@ function SignInFormContent() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
+                {emailError && <p className="text-xs text-red-400 mt-1">{emailError}</p>}
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
@@ -273,6 +286,7 @@ function SignInFormContent() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                {passwordError && <p className="text-xs text-red-400 mt-1">{passwordError}</p>}
               </div>
 
               <button
