@@ -7,10 +7,7 @@ export async function sendVerificationEmail(
 ) {
   const token = await createEmailVerificationToken(email);
 
-  const baseUrl =
-    process.env.NEXTAUTH_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    "http://localhost:3000";
+  const baseUrl = process.env.NEXTAUTH_URL;
 
     const verificationLink =
     `${baseUrl}/api/auth/verify-email?token=${token}`;

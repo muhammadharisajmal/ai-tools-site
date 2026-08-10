@@ -48,10 +48,7 @@ export async function POST(req: Request) {
     });
 
     // 4. Construct reset link
-    const baseUrl =
-      process.env.NEXTAUTH_URL ||
-      process.env.AUTH_URL ||
-      "http://localhost:3000";
+    const baseUrl = process.env.NEXTAUTH_URL;
     const resetLink = `${baseUrl}/reset-password?token=${token}`;
 
     // 5. Send password reset email
