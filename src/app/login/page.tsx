@@ -115,7 +115,12 @@ function SignInFormContent() {
       if (sessionData?.user?.role === "ADMIN") {
         targetUrl = "/admin";
       } else if (callbackUrlParam && !callbackUrlParam.startsWith("/admin")) {
-        targetUrl = callbackUrlParam;
+        try {
+          const url = new URL(callbackUrlParam, window.location.origin);
+          targetUrl = url.pathname + url.search;
+        } catch {
+          targetUrl = callbackUrlParam;
+        }
       }
       window.location.href = targetUrl;
     } catch {
@@ -153,7 +158,16 @@ function SignInFormContent() {
     setErrorMessage(null);
     setIsGoogleLoading(true);
     try {
-      await signIn("google", { callbackUrl: "/dashboard" });
+      let redirectUrl = "/dashboard";
+      if (callbackUrlParam) {
+        try {
+          const url = new URL(callbackUrlParam, window.location.origin);
+          redirectUrl = url.pathname + url.search;
+        } catch {
+          redirectUrl = "/dashboard";
+        }
+      }
+      await signIn("google", { callbackUrl: redirectUrl });
     } catch {
       setErrorMessage("Unable to connect with Google. Please try again.");
       setIsGoogleLoading(false);
