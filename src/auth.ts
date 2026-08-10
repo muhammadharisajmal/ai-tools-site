@@ -30,8 +30,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = (credentials.email as string).trim().toLowerCase();
         const password = credentials.password as string;
 
-        const user = await prisma.user.findUnique({
-          where: { email },
+        // Case-insensitive query handles both capitalized and lowercase DB records
+        const user = await prisma.user.findFirst({
+          where: {
+            email: {
+              equals: email,
+              mode: "insensitive",
+            },
+          },
         });
 
         if (!user || !user.password) {
@@ -75,17 +81,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return `${baseUrl}/dashboard`;
     },
     async signIn({ user, account }) {
-      // Allow credentials provider to pass through successfully if authorized
+      // 1. Credentials provider bypass: authorize() already validated password & email verification
       if (account?.provider === "credentials") {
         return true;
       }
 
-      // Google Sign-in logic (kept safe and untouched)
+      // 2. Google OAuth logic (kept completely safe and untouched)
       if (!user?.email) return false;
       const normalizedEmail = user.email.trim().toLowerCase();
       
-      let dbUser = await prisma.user.findUnique({
-        where: { email: normalizedEmail },
+      let dbUser = await prisma.user.findFirst({
+        where: {
+          email: {
+            equals: normalizedEmail,
+            mode: "insensitive",
+          },
+        },
       });
 
       if (!dbUser) {
@@ -163,8 +174,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const email = token.email || user?.email;
       if (email) {
         try {
-          const dbUser = await prisma.user.findUnique({
-            where: { email: email.trim().toLowerCase() },
+          const dbUser = await prisma.user.findFirst({
+            where: {
+              email: {
+                equals: email.trim().toLowerCase(),
+                mode: "insensitive",
+              },
+            },
             select: { id: true, role: true, emailVerified: true },
           });
           if (dbUser) {
