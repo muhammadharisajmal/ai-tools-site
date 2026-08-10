@@ -47,12 +47,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new Error("EMAIL_NOT_VERIFIED");
         }
 
+        // Return the exact user properties expected by JWT and Session callbacks
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           image: user.image,
-          role: user.role,
+          role: user.role || "USER",
           emailVerified: user.emailVerified,
         };
       },
@@ -75,6 +76,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return `${baseUrl}/dashboard`;
     },
     async signIn({ user, account }) {
+      // If this is a credentials login, bypass Google check and rely solely on authorize()
+      if (account?.provider === "credentials") {
+        return true;
+      }
+
       if (!user?.email) return false;
       const normalizedEmail = user.email.trim().toLowerCase();
       
