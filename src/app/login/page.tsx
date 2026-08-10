@@ -102,8 +102,8 @@ function SignInFormContent() {
         } else if (errStr.includes("EMAIL_NOT_VERIFIED")) {
           setErrorMessage("Your email has not been verified. Please check your inbox or click resend.");
           setIsUnverified(true);
-        } else if (errStr.includes("INVALID_CREDENTIALS")) {
-          setErrorMessage("Incorrect password. Please try again.");
+        } else if (errStr.includes("INVALID_CREDENTIALS") || errStr.includes("CredentialsSignin")) {
+          setErrorMessage("Incorrect password or unverified email. Please verify your credentials.");
         } else {
           setErrorMessage("Invalid email or password.");
         }
@@ -126,7 +126,6 @@ function SignInFormContent() {
       }
       window.location.href = targetUrl;
     } catch (err: any) {
-      // Safely catch standard NextAuth error throws or network failures
       const msg = err?.message || "";
       if (msg.includes("USER_NOT_FOUND")) {
         setErrorMessage("This email is not registered. Please sign up first.");
@@ -298,7 +297,6 @@ function SignInFormContent() {
               </button>
             </form>
 
-            {/* Resend Verification Button shown ONLY if unverified */}
             {isUnverified && (
               <div className="mt-4 flex flex-col gap-2">
                 <button

@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -6,6 +6,16 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { sendVerificationEmail } from "@/lib/send-verification-email";
 import { authConfig } from "./auth.config";
+
+class UserNotFoundError extends CredentialsSignin {
+  code = "USER_NOT_FOUND";
+}
+class InvalidCredentialsError extends CredentialsSignin {
+  code = "INVALID_CREDENTIALS";
+}
+class EmailNotVerifiedError extends CredentialsSignin {
+  code = "EMAIL_NOT_VERIFIED";
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -24,7 +34,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("INVALID_CREDENTIALS");
+          throw new InvalidCredentialsError();
         }
 
         const email = (credentials.email as string).trim().toLowerCase();
@@ -35,16 +45,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
 
         if (!user || !user.password) {
-          throw new Error("USER_NOT_FOUND");
+          throw new UserNotFoundError();
         }
 
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
-          throw new Error("INVALID_CREDENTIALS");
+          throw new InvalidCredentialsError();
         }
 
         if (!user.emailVerified) {
-          throw new Error("EMAIL_NOT_VERIFIED");
+          throw new EmailNotVerifiedError();
         }
 
         return {
@@ -94,7 +104,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               name: user.name,
               email: normalizedEmail,
               image: user.image,
-              emailVerified: null, // Explicitly unverified initially
+              emailVerified: null,
               role: "USER",
             },
           });
