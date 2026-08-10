@@ -44,14 +44,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       });
 
-      // CASE 1: Brand New User Signup via Google
+      // CASE 1: Brand New User Signup via Google -> Require Verification
       if (!dbUser) {
         dbUser = await prisma.user.create({
           data: {
             name: user.name,
             email: normalizedEmail,
             image: user.image,
-            emailVerified: new Date(), // Automatically verify Google sign-ins since Google verifies emails
+            emailVerified: null, // Unverified initially
             role: "USER",
           },
         });
@@ -72,17 +72,46 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             },
           });
         }
-        return true;
+        try {
+          await sendVerificationEmail(normalizedEmail, user.name ?? undefined);
+        } catch (err) {
+          console.error("Failed to send verification email on Google signup:", err);
+        }
+        return `/login?registered=true&email=${encodeURIComponent(normalizedEmail)}`;
       }
 
-      // If user exists but emailVerified was null previously, update it on Google sign-in
+      // CASE 2: User exists but has NOT yet verified their email
       if (!dbUser.emailVerified) {
-        await prisma.user.update({
-          where: { id: dbUser.id },
-          data: { emailVerified: new Date() },
+        // Ensure account is linked
+        const existingAccount = await prisma.account.findFirst({
+          where: { userId: dbUser.id, provider: account?.provider },
         });
+        if (!existingAccount && account) {
+          await prisma.account.create({
+            data: {
+              userId: dbUser.id,
+              type: account.type,
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+              refresh_token: account.refresh_token,
+              access_token: account.access_token,
+              expires_at: account.expires_at,
+              token_type: account.token_type,
+              scope: account.scope,
+              id_token: account.id_token,
+              session_state: account.session_state as string | null,
+            },
+          });
+        }
+        try {
+          await sendVerificationEmail(normalizedEmail, dbUser.name ?? undefined);
+        } catch (err) {
+          console.error("Failed to resend verification email:", err);
+        }
+        return `/login?error=EMAIL_NOT_VERIFIED&email=${encodeURIComponent(normalizedEmail)}`;
       }
 
+      // CASE 3: User IS verified -> allow sign in
       return true;
     },
     async jwt({ token, user }) {

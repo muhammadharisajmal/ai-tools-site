@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import toast from "react-hot-toast";
 
 function AnimatedGradientBg() {
   return (
@@ -18,8 +19,56 @@ function SignInFormContent() {
   const searchParams = useSearchParams();
   const isAdminAccess = searchParams.get("admin") === "true";
   const callbackUrlParam = searchParams.get("callbackUrl");
+  const callbackError = searchParams.get("error");
+  const isJustRegistered = searchParams.get("registered") === "true";
+  const registeredEmail = searchParams.get("email");
+
+  const [email, setEmail] = useState(registeredEmail || "");
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isUnverified, setIsUnverified] = useState(false);
+
+  useEffect(() => {
+    if (registeredEmail && !email) {
+      setEmail(registeredEmail);
+    }
+    if (isJustRegistered) {
+      toast.success("Account created! A verification email has been sent.", {
+        duration: 6000,
+      });
+      setIsUnverified(true);
+    }
+    if (callbackError === "EMAIL_NOT_VERIFIED" || callbackError === "AccessDenied") {
+      setErrorMessage("Your email has not been verified. Please check your inbox.");
+      setIsUnverified(true);
+    }
+  }, [isJustRegistered, callbackError, registeredEmail, email]);
+
+  const handleResendVerification = async () => {
+    if (!email.trim()) {
+      toast.error("Please enter your email address or sign in with Google again.");
+      return;
+    }
+    setIsResending(true);
+    try {
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success("Verification email has been sent successfully.");
+      } else {
+        toast.error(data.message || "Failed to resend verification email.");
+      }
+    } catch {
+      toast.error("An error occurred while connecting to the server.");
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     setErrorMessage(null);
@@ -72,11 +121,25 @@ function SignInFormContent() {
             <button
               type="button"
               onClick={handleGoogleSignIn}
-              disabled={isGoogleLoading}
+              disabled={isGoogleLoading || isResending}
               className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-semibold text-sm shadow-sm hover:bg-slate-750 hover:border-slate-600 transition-all cursor-pointer disabled:opacity-60"
             >
               <span>{isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
             </button>
+
+            {/* Resend Verification Controls shown ONLY if unverified */}
+            {isUnverified && (
+              <div className="mt-6 flex flex-col gap-2 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={isResending}
+                  className="w-full rounded-xl bg-blue-600 py-3 text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer font-semibold text-xs transition-colors shadow"
+                >
+                  {isResending ? "Sending Verification Email..." : "Resend Verification Email"}
+                </button>
+              </div>
+            )}
 
           </div>
         </div>
