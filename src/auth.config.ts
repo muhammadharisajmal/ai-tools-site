@@ -22,9 +22,8 @@ export const authConfig = {
       if (isProtectedDashboard || isProtectedWorkplace) {
         if (!isLoggedIn) return false;
         
-        // Block access if email is not verified
-        // @ts-expect-error - emailVerified custom property on session user
-        if (!auth.user?.emailVerified) {
+        const user = auth.user as { emailVerified?: Date | null };
+        if (!user?.emailVerified) {
           return false; 
         }
 
@@ -33,5 +32,21 @@ export const authConfig = {
 
       return true;
     },
+    async session({ session, token }) {
+      if (session.user && token) {
+        (session.user as any).id = token.id as string;
+        (session.user as any).role = (token.role as string) || "USER";
+        (session.user as any).emailVerified = token.emailVerified as Date | null;
+      }
+      return session;
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = (user as any).role || "USER";
+        token.emailVerified = (user as any).emailVerified;
+      }
+      return token;
+    }
   },
 } satisfies NextAuthConfig;

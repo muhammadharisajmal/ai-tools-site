@@ -1,4 +1,4 @@
-import NextAuth, { CredentialsSignin } from "next-auth";
+import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -6,16 +6,6 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { sendVerificationEmail } from "@/lib/send-verification-email";
 import { authConfig } from "./auth.config";
-
-class UserNotFoundError extends CredentialsSignin {
-  code = "USER_NOT_FOUND";
-}
-class InvalidCredentialsError extends CredentialsSignin {
-  code = "INVALID_CREDENTIALS";
-}
-class EmailNotVerifiedError extends CredentialsSignin {
-  code = "EMAIL_NOT_VERIFIED";
-}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -34,7 +24,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new InvalidCredentialsError();
+          throw new Error("INVALID_CREDENTIALS");
         }
 
         const email = (credentials.email as string).trim().toLowerCase();
@@ -45,16 +35,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
 
         if (!user || !user.password) {
-          throw new UserNotFoundError();
+          throw new Error("USER_NOT_FOUND");
         }
 
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
-          throw new InvalidCredentialsError();
+          throw new Error("INVALID_CREDENTIALS");
         }
 
         if (!user.emailVerified) {
-          throw new EmailNotVerifiedError();
+          throw new Error("EMAIL_NOT_VERIFIED");
         }
 
         return {
@@ -70,10 +60,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   session: {
     strategy: "jwt",
-  },
-  pages: {
-    signIn: "/login",
-    error: "/login",
   },
   callbacks: {
     ...authConfig.callbacks,
