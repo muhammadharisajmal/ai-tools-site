@@ -24,7 +24,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("INVALID_CREDENTIALS");
+          return null;
         }
 
         const email = (credentials.email as string).trim().toLowerCase();
@@ -35,19 +35,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
 
         if (!user || !user.password) {
-          throw new Error("USER_NOT_FOUND");
+          return null;
         }
 
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
-          throw new Error("INVALID_CREDENTIALS");
+          return null;
         }
 
         if (!user.emailVerified) {
           throw new Error("EMAIL_NOT_VERIFIED");
         }
 
-        // Return the exact user properties expected by JWT and Session callbacks
         return {
           id: user.id,
           name: user.name,

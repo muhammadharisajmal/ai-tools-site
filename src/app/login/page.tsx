@@ -82,11 +82,9 @@ function SignInFormContent() {
     e.preventDefault();
     setErrorMessage(null);
     setIsUnverified(false);
-
     const isEmailValid = validateEmail(email);
     const isPasswordValid = validatePassword(password);
     if (!isEmailValid || !isPasswordValid) return;
-
     setIsSubmitting(true);
     try {
       const res = await signIn("credentials", {
@@ -96,16 +94,12 @@ function SignInFormContent() {
       });
 
       if (res?.error) {
-        const errStr = res.error;
-        if (errStr.includes("USER_NOT_FOUND")) {
-          setErrorMessage("This email is not registered. Please sign up first.");
-        } else if (errStr.includes("EMAIL_NOT_VERIFIED")) {
+        // If authorize threw EMAIL_NOT_VERIFIED
+        if (res.error.includes("EMAIL_NOT_VERIFIED")) {
           setErrorMessage("Your email has not been verified. Please check your inbox.");
           setIsUnverified(true);
-        } else if (errStr.includes("INVALID_CREDENTIALS") || errStr.includes("CredentialsSignin")) {
-          setErrorMessage("Incorrect password. Please try again.");
         } else {
-          setErrorMessage("Invalid email or password.");
+          setErrorMessage("Incorrect email or password. Please try again.");
         }
         setIsSubmitting(false);
         return;
@@ -113,6 +107,14 @@ function SignInFormContent() {
 
       const sessionRes = await fetch("/api/auth/session");
       const sessionData = await sessionRes.json();
+      
+      if (sessionData?.user && !sessionData.user.emailVerified) {
+        setErrorMessage("Your email has not been verified. Please check your inbox.");
+        setIsUnverified(true);
+        setIsSubmitting(false);
+        return;
+      }
+
       let targetUrl = "/dashboard";
       if (sessionData?.user?.role === "ADMIN") {
         targetUrl = "/admin";
@@ -126,21 +128,10 @@ function SignInFormContent() {
       }
       window.location.href = targetUrl;
     } catch (err: any) {
-      const msg = err?.message || "";
-      if (msg.includes("USER_NOT_FOUND")) {
-        setErrorMessage("This email is not registered. Please sign up first.");
-      } else if (msg.includes("EMAIL_NOT_VERIFIED")) {
-        setErrorMessage("Your email has not been verified. Please check your inbox.");
-        setIsUnverified(true);
-      } else if (msg.includes("INVALID_CREDENTIALS")) {
-        setErrorMessage("Incorrect password. Please try again.");
-      } else {
-        setErrorMessage("Invalid email or password.");
-      }
+      setErrorMessage("Incorrect email or password. Please try again.");
       setIsSubmitting(false);
     }
   };
-
   const handleResendVerification = async () => {
     if (!email.trim()) {
       toast.error("Please enter your email address in the field above.");
