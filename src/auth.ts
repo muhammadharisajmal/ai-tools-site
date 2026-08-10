@@ -63,6 +63,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     ...authConfig.callbacks,
+    async redirect({ url, baseUrl }) {
+      try {
+        const parsedUrl = new URL(url, baseUrl);
+        if (parsedUrl.hostname.replace("www.", "") === new URL(baseUrl).hostname.replace("www.", "")) {
+          return parsedUrl.pathname + parsedUrl.search;
+        }
+      } catch {
+        if (url.startsWith("/")) return `${baseUrl}${url}`;
+      }
+      return `${baseUrl}/dashboard`;
+    },
     async signIn({ user, account }) {
       if (!user?.email) return false;
       const normalizedEmail = user.email.trim().toLowerCase();
