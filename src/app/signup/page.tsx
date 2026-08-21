@@ -16,24 +16,14 @@ function AnimatedGradientBg() {
 
 function SignUpFormContent() {
   const searchParams = useSearchParams();
-  const callbackUrlParam = searchParams.get("callbackUrl");
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignUp = async () => {
     setErrorMessage(null);
     setIsGoogleLoading(true);
     try {
-      let redirectUrl = "/dashboard";
-      if (callbackUrlParam) {
-        try {
-          const url = new URL(callbackUrlParam, window.location.origin);
-          redirectUrl = url.pathname + url.search;
-        } catch {
-          redirectUrl = "/dashboard";
-        }
-      }
-      await signIn("google", { callbackUrl: redirectUrl });
+      await signIn("google", { callbackUrl: "/api/auth/post-signup" });
     } catch {
       setErrorMessage("Unable to connect with Google. Please try again.");
       setIsGoogleLoading(false);
@@ -68,7 +58,7 @@ function SignUpFormContent() {
 
             <button
               type="button"
-              onClick={handleGoogleSignIn}
+              onClick={handleGoogleSignUp}
               disabled={isGoogleLoading}
               className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-semibold text-sm shadow-sm hover:bg-slate-750 hover:border-slate-600 transition-all cursor-pointer disabled:opacity-60"
             >

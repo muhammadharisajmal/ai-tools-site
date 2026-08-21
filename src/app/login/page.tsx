@@ -40,6 +40,8 @@ function SignInFormContent() {
     if (callbackError === "EMAIL_NOT_VERIFIED" || callbackError === "AccessDenied") {
       setErrorMessage("Your email has not been verified. Please check your inbox.");
       setIsUnverified(true);
+    } else if (callbackError === "ACCOUNT_NOT_FOUND") {
+      setErrorMessage("Account didn't exist. Make sure to have an account first.");
     }
   }, [isJustRegistered, callbackError, registeredEmail, email]);
 
@@ -72,16 +74,7 @@ function SignInFormContent() {
     setErrorMessage(null);
     setIsGoogleLoading(true);
     try {
-      let redirectUrl = "/dashboard";
-      if (callbackUrlParam) {
-        try {
-          const url = new URL(callbackUrlParam, window.location.origin);
-          redirectUrl = url.pathname + url.search;
-        } catch {
-          redirectUrl = "/dashboard";
-        }
-      }
-      await signIn("google", { callbackUrl: redirectUrl });
+      await signIn("google", { callbackUrl: "/api/auth/post-login" });
     } catch {
       setErrorMessage("Unable to connect with Google. Please try again.");
       setIsGoogleLoading(false);
@@ -109,9 +102,7 @@ function SignInFormContent() {
                   <span>🔒 Administrator Portal</span>
                 </div>
               )}
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                {isAdminAccess ? "Administrator Login" : "Welcome Back"}
-              </h1>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Welcome Back</h1>
               <p className="text-sm text-slate-400 mt-1">Sign in securely with your Google account</p>
             </div>
 
