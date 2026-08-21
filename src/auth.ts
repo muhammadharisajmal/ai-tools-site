@@ -31,7 +31,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return `${baseUrl}/dashboard`;
     },
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       if (!user?.email) return false;
       const normalizedEmail = user.email.trim().toLowerCase();
       
@@ -44,17 +44,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       });
 
-      // Check if this authentication attempt originated from the Signup page or Login page
-      // (NextAuth passes request state via callbacks or redirect query parameters when initiated)
-      const isSignupContext = (profile as any)?._isSignup === true || (account as any)?._isSignup === true;
-
-      // SCENARIO A: User tries to LOGIN, but the account does NOT exist yet
-      if (!dbUser && !isSignupContext) {
-        return `/signup?error=ACCOUNT_NOT_FOUND&email=${encodeURIComponent(normalizedEmail)}`;
-      }
-
-      // SCENARIO B: Brand New User Signup via Google -> Require Verification
-      if (!dbUser && isSignupContext) {
+      // CASE 1: Brand New User Signup via Google -> Require Verification
+      if (!dbUser) {
         dbUser = await prisma.user.create({
           data: {
             name: user.name,
@@ -89,8 +80,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return `/login?registered=true&email=${encodeURIComponent(normalizedEmail)}`;
       }
 
-      // SCENARIO C: User exists but has NOT yet verified their email
-      if (dbUser && !dbUser.emailVerified) {
+      // CASE 2: User exists but has NOT yet verified their email
+      if (!dbUser.emailVerified) {
         const existingAccount = await prisma.account.findFirst({
           where: { userId: dbUser.id, provider: account?.provider },
         });
@@ -119,14 +110,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return `/login?error=EMAIL_NOT_VERIFIED&email=${encodeURIComponent(normalizedEmail)}`;
       }
 
-      // SCENARIO D: User IS verified -> allow sign in, route based on role
-      if (dbUser && dbUser.emailVerified) {
-        if (dbUser.role === "ADMIN") {
-          return `/admin`;
-        }
-        return `/dashboard`;
-      }
-
+      // CASE 3: User IS verified -> allow sign in
       return true;
     },
     async jwt({ token, user }) {
