@@ -14,31 +14,31 @@ const MODEL_REGISTRY: Record<AITool, AIModelConfig> = {
   writing: {
     model: GROQ_MODELS.GPT_OSS_120B,
     temperature: 0.7,
-    maxTokens: 4096,
+    maxTokens: 2500,
   },
 
   research: {
     model: GROQ_MODELS.GPT_OSS_120B,
     temperature: 0.3,
-    maxTokens: 8192,
+    maxTokens: 2500,
   },
 
   studyplanner: {
     model: GROQ_MODELS.GPT_OSS_120B,
     temperature: 0.5,
-    maxTokens: 8192,
+    maxTokens: 2500,
   },
 
   coding: {
     model: GROQ_MODELS.GPT_OSS_120B,
     temperature: 0.2,
-    maxTokens: 8192,
+    maxTokens: 2500,
   },
 
   productivity: {
     model: GROQ_MODELS.GPT_OSS_120B,
     temperature: 0.6,
-    maxTokens: 8192,
+    maxTokens: 2500,
   },
 };
 
