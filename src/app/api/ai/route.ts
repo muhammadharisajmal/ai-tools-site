@@ -31,6 +31,10 @@ export async function POST(req: Request) {
     // Get model configuration
     const modelConfig = getModel(data.tool);
 
+    console.log("AI TOOL:", data.tool);
+console.log("AI MODEL:", modelConfig.model);
+
+
     // Get system prompt
     const systemPrompt = getSystemPrompt(data.tool);
 
@@ -82,17 +86,17 @@ return NextResponse.json({
     : undefined,
 });
 
-  } catch (error) {
-    console.error(error);
+} catch (error: any) {
+  console.error("GROQ ERROR:", error);
 
-    return NextResponse.json<AIResponse>(
-      {
-        success: false,
-        error: "Internal Server Error.",
-      },
-      {
-        status: 500,
-      }
-    );
-  }
+  return NextResponse.json(
+    {
+      success: false,
+      error: error?.message || "Internal Server Error.",
+    },
+    {
+      status: 500,
+    }
+  );
+}
 }
