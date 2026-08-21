@@ -34,9 +34,7 @@ function SignInFormContent() {
       setEmail(registeredEmail);
     }
     if (isJustRegistered) {
-      toast.success("Account created! A verification email has been sent.", {
-        duration: 6000,
-      });
+      toast.success("Account created! A verification email has been sent.", { duration: 6000 });
       setIsUnverified(true);
     }
     if (callbackError === "EMAIL_NOT_VERIFIED" || callbackError === "AccessDenied") {
@@ -47,7 +45,7 @@ function SignInFormContent() {
 
   const handleResendVerification = async () => {
     if (!email.trim()) {
-      toast.error("Please enter your email address or sign in with Google again.");
+      toast.error("Please enter your email or sign in with Google again.");
       return;
     }
     setIsResending(true);
@@ -106,6 +104,11 @@ function SignInFormContent() {
                 </div>
                 <span className="font-extrabold text-lg tracking-tight text-white">AI Study Hub</span>
               </Link>
+              {isAdminAccess && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold text-xs mb-2">
+                  <span>🔒 Administrator Portal</span>
+                </div>
+              )}
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                 {isAdminAccess ? "Administrator Login" : "Welcome Back"}
               </h1>
@@ -127,7 +130,6 @@ function SignInFormContent() {
               <span>{isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
             </button>
 
-            {/* Resend Verification Controls shown ONLY if unverified */}
             {isUnverified && (
               <div className="mt-6 flex flex-col gap-2 pt-4 border-t border-slate-800">
                 <button
@@ -140,6 +142,15 @@ function SignInFormContent() {
                 </button>
               </div>
             )}
+
+            <div className="w-full text-center mt-7 pt-4 border-t border-slate-800/80">
+              <span className="text-xs text-slate-400">
+                Don&apos;t have an account?{" "}
+                <Link href="/signup" className="font-semibold text-purple-400 hover:text-purple-300">
+                  Sign Up
+                </Link>
+              </span>
+            </div>
 
           </div>
         </div>
