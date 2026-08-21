@@ -9,7 +9,7 @@ export const GROQ_MODELS = {
   GPT_OSS_120B: "openai/gpt-oss-120b",
   LLAMA_8B: "llama-3.1-8b-instant",
 } as const;
-
+//models
 const MODEL_REGISTRY: Record<AITool, AIModelConfig> = {
   writing: {
     model: GROQ_MODELS.GPT_OSS_120B,
